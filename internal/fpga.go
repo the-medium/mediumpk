@@ -16,6 +16,8 @@ const (
 	VerifyRequestSize	= 192
 	// ResponseSize is buffer size of response
 	ResponseSize		= 96
+	// MetricSetSize is buffer size of MetricSet
+	MetricSetSize = 28
 	rwUnitBytes = 4
 )
 
