@@ -1,9 +1,19 @@
 package internal
 
 import (
+	"errors"
 	"log"
 	"os"
 	"strconv"
+)
+
+const (
+	// SignRequestSize is buffer size of sign request
+	SignRequestSize		= 128
+	// VerifyRequestSize is buffer size of verify request
+	VerifyRequestSize	= 192
+	// ResponseSize is buffer size of response
+	ResponseSize		= 96
 )
 
 // FPGADevice is a structue to store device file descriptors
@@ -72,4 +82,36 @@ func (d *FPGADevice) Close() (err error){
 	}
 
 	return
+}
+
+// Request send request into FPGA
+func (d *FPGADevice) Request(buffer []byte) (bool, error) {
+	writeSize, err := d.h2c.Write(buffer)
+	if err != nil {
+		return false, err
+	}
+
+	if writeSize != len(buffer) {
+		err = errors.New("write size not match.." + strconv.Itoa(writeSize))
+		return false, err
+	}
+
+	return true, nil
+}
+
+// Poll brings result from FPGA
+func (d *FPGADevice) Poll() ([]byte, error){
+	buffer := make([]byte, ResponseSize)
+
+	readSize, err := d.c2h.Read(buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	if readSize != ResponseSize{
+		err = errors.New("read size not match.." + strconv.Itoa(readSize))
+		return nil, err
+	}
+
+	return buffer, nil
 }
