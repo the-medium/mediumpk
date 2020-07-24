@@ -1,7 +1,9 @@
 package internal
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -14,6 +16,7 @@ const (
 	VerifyRequestSize	= 192
 	// ResponseSize is buffer size of response
 	ResponseSize		= 96
+	rwUnitBytes = 4
 )
 
 // FPGADevice is a structue to store device file descriptors
@@ -46,7 +49,7 @@ func NewFPGADevice(index int) (*FPGADevice, error) {
 		return nil, err
 	}
 
-	user, err := os.OpenFile(prefix + "_user", os.O_RDONLY | os.O_EXCL, os.ModeDevice)
+	user, err := os.OpenFile(prefix + "_user", os.O_RDWR | os.O_EXCL, os.ModeDevice)
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
@@ -57,6 +60,11 @@ func NewFPGADevice(index int) (*FPGADevice, error) {
 		c2h,
 		ctrl,
 		user,
+	}
+
+	err = dev.Reset()
+	if err != nil {
+		return nil, err
 	}
 
 	return &dev, nil
@@ -114,4 +122,66 @@ func (d *FPGADevice) Poll() ([]byte, error){
 	}
 
 	return buffer, nil
+}
+
+// CheckAvailable checks if h2c/c2h channel is available 
+func (d *FPGADevice) CheckAvailable() error{
+	buffer := make([]byte, rwUnitBytes)
+
+	detail := []string{"H2C", "C2H"}
+	value := [][]byte{{0x06, 0x80, 0xc0, 0x1f}, {0x06, 0x80, 0xc1, 0x1f}}
+	pos := []int64{0x0000, 0x1000}
+	for i, v := range pos{
+		readSize, err := d.ctrl.ReadAt(buffer, v)
+		if err != nil{
+			return err
+		}
+		if readSize != rwUnitBytes {
+			return fmt.Errorf("[control] readSize %d not match with %d at 0x%x... %s", readSize, rwUnitBytes, v, detail[i])
+		}
+		if bytes.Compare(buffer, value[i]) != 0{
+			return fmt.Errorf("[control] %s Channel Unavailable", detail[i])
+		}
+	}
+
+	return nil
+}
+
+// GetMetric returns device metric information
+func (d *FPGADevice) GetMetric() ([]byte, error){
+	const totalReadBytes = 28
+	buffer := make([]byte, totalReadBytes)
+
+	idx := 0
+	detail := []string{"Temperature", "VCCINT", "VCCAUX", "VCCBRAM", "Total", "Success", "Error"}
+	pos := []int64{0x2400, 0x2404, 0x2408, 0x2418, 0x18010, 0x18014, 0x18018}
+	for i, v := range pos{
+		readSize, err := d.user.ReadAt(buffer[idx:idx+4], v)
+		if err != nil{
+			return nil, err
+		}
+		if readSize != rwUnitBytes {
+			return nil, fmt.Errorf("[user] readSize %d not match with %d at 0x%x... %s", readSize, rwUnitBytes, v, detail[i])
+		}
+		idx += readSize
+	}
+
+	return buffer, nil	
+}
+
+// Reset resets device
+func (d *FPGADevice) Reset() error{
+	buffer := [][]byte{{0x00, 0x00, 0x00, 0x00}, {0xff, 0xff, 0xff, 0xff}, {0x00, 0x00, 0x00, 0x00}}
+	
+	for _, v := range buffer{
+		writeSize, err := d.user.WriteAt(v, 0x1800c)
+		if err != nil {
+			return err
+		}
+		if writeSize != rwUnitBytes{
+			return fmt.Errorf("[user] writeSize %d not match with %d at 0x%x... %s", writeSize, rwUnitBytes, 0x1800c, "ecc_reset")
+		}
+	}
+
+	return nil	
 }

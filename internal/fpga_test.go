@@ -25,7 +25,7 @@ func TestFPGA_Sign_CPU_Verify(t *testing.T) {
 	// generate private key
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.NoError(t, err)
-	
+
 	d := privateKey.D.Bytes()
 	d32 := make([]byte, 32)
 	copy(d32[32-len(d):], d[:])
@@ -150,6 +150,43 @@ func TestCPU_Sign_FPGA_Verify(t *testing.T) {
 	assert.Equal(t, 0, int(binary.BigEndian.Uint32(respBuf[4:8])))
 
 	// close fpga
+	err = dev.Close()
+	assert.NoError(t, err)
+}
+
+func TestFPGADevice_CheckAvailable(t *testing.T) {
+	dev, err := NewFPGADevice(0)
+	assert.NoError(t, err)
+	assert.NotNil(t, dev)
+
+	err = dev.CheckAvailable()
+	assert.NoError(t, err)
+	
+	err = dev.Close()
+	assert.NoError(t, err)
+}
+
+func TestFPGADevice_GetMetric(t *testing.T) {
+	dev, err := NewFPGADevice(0)
+	assert.NoError(t, err)
+	assert.NotNil(t, dev)
+
+	buffer, err := dev.GetMetric()
+	assert.NoError(t, err)
+	assert.NotNil(t, buffer)
+
+	err = dev.Close()
+	assert.NoError(t, err)
+}
+
+func TestFPGADevice_Reset(t *testing.T) {
+	dev, err := NewFPGADevice(0)
+	assert.NoError(t, err)
+	assert.NotNil(t, dev)
+
+	err = dev.Reset()
+	assert.NoError(t, err)
+
 	err = dev.Close()
 	assert.NoError(t, err)
 }
