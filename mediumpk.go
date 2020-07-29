@@ -27,6 +27,7 @@ func(m *Mediumpk) Close() error{
 	return m.dev.Close()
 }
 
+// must not be called concurrently
 func(m *Mediumpk) putChannel(resChan *chan ResponseEnvelop) (int, error){
 	for i, c := range m.chanStore {
 		if c == nil{
@@ -37,6 +38,7 @@ func(m *Mediumpk) putChannel(resChan *chan ResponseEnvelop) (int, error){
 	return -1, errors.New("no empty channel Store")
 }
 
+// must not be called concurrently
 func(m *Mediumpk) getChannel(i int) (*chan ResponseEnvelop, error){
 	if( i >= len(m.chanStore)){
 		return nil, errors.New("out of range")
