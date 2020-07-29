@@ -13,8 +13,8 @@ type Mediumpk struct{
 }
 
 // New creates and returns Mediumpk instance
-func New(maxPending int) (*Mediumpk, error){
-	dev, err := internal.NewFPGADevice(0)
+func New(index int, maxPending int) (*Mediumpk, error){
+	dev, err := internal.NewFPGADevice(index)
 	if(err != nil){
 		return nil, err
 	}
