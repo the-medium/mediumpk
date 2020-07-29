@@ -8,17 +8,6 @@ import(
 	"github.com/the-medium/mediumpk/internal"
 )
 
-var strD = "519b423d715f8b581f4fa8ee59f4771a5b44c8130b4e3eacca54a56dda72b464"
-var strK = "94a1bbb14b906a61a280f245f9e93c7f3b4a6247824f5d33b9670787642a68de"
-var strH1 = "ea5cd45052849c4ae816bbc44ed833e832af8a619ba47268aabca2744c4c6268"
-var strRExpected = "f3ac8061b514795b8843e3d6629527ed2afd6b1f6a555a7acabb5e6f79c8c2ac"
-var strSExpected = "6e9a1aee9981cc4a102aa7033fdf633b39be438527865373edfe90f2ea9e29ac"
-var strX = "e305d41ab27b39c84230ab2faf34fb15e9d0543f4ac19d2520b94d71df9be5bf"
-var strY = "0b97c506c163237d6e9264f7148336e524d32174754198066995a252b1a51f4e"
-var strR = "5806c2774086b61c97afd87585215c09fe57233f232278c0e8976d35f0570641"
-var strS = "6d8a758eb8edfeecbdab2e413bee8bc73a88a887f97a54c2a967de0afcb8b0af"
-var strH2 = "00000000000000000000000000000000000000000048656c6c6f20576f726c64"
-
 func TestSerializeSignRequest(t *testing.T) {
 	// d
 	d, err := hex.DecodeString(strD)

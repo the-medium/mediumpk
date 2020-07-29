@@ -14,7 +14,7 @@ type Mediumpk struct{
 
 // New creates and returns Mediumpk instance
 func New(maxPending int) (*Mediumpk, error){
-	dev, err := internal.NewFPGADevice(1)
+	dev, err := internal.NewFPGADevice(0)
 	if(err != nil){
 		return nil, err
 	}
@@ -25,6 +25,40 @@ func New(maxPending int) (*Mediumpk, error){
 // Close releases Mediumpk instance
 func(m *Mediumpk) Close() error{
 	return m.dev.Close()
+}
+
+// Request send sign/verify request to FPGA
+func(m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) (bool, error){
+	idx, err := m.putChannel(pchan)
+	if(err != nil){
+		return false, err
+	}
+
+	return m.dev.Request(env.Bytes(serializer{}, idx))
+}
+
+
+// GetResponseAndNotify get response from FPGA and send it to channel
+func(m *Mediumpk) GetResponseAndNotify() (bool, error){
+	buffer, err := m.dev.Poll()
+	if(err != nil){
+		return false, err 
+	}
+
+	var resEnv ResponseEnvelop 
+	idx, err := resEnv.Deserialize(deserializer{}, buffer)
+	if(err != nil){
+		return false, err
+	}
+	
+	ch, err := m.getChannel(idx)
+	if(err != nil){
+		return false, err
+	}
+	
+	*ch <- resEnv
+
+	return true, nil
 }
 
 // must not be called concurrently
