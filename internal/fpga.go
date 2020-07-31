@@ -150,9 +150,8 @@ func (d *FPGADevice) CheckAvailable() error{
 }
 
 // GetMetric returns device metric information
-func (d *FPGADevice) GetMetric() ([]byte, error){
-	const totalReadBytes = 28
-	buffer := make([]byte, totalReadBytes)
+func (d *FPGADevice) GetMetrics() ([]byte, error){
+	buffer := make([]byte, MetricSetSize)
 
 	idx := 0
 	detail := []string{"Temperature", "VCCINT", "VCCAUX", "VCCBRAM", "Total", "Success", "Error"}

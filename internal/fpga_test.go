@@ -166,12 +166,12 @@ func TestFPGADevice_CheckAvailable(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestFPGADevice_GetMetric(t *testing.T) {
+func TestFPGADevice_GetMetrics(t *testing.T) {
 	dev, err := NewFPGADevice(0)
 	assert.NoError(t, err)
 	assert.NotNil(t, dev)
 
-	buffer, err := dev.GetMetric()
+	buffer, err := dev.GetMetrics()
 	assert.NoError(t, err)
 	assert.NotNil(t, buffer)
 

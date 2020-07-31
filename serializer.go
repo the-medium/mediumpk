@@ -59,7 +59,7 @@ func (s *deserializer) deserializeResponse(env *ResponseEnvelop, buffer []byte) 
 
 func (s *deserializer) deserializeMetric(env *MetricEnvelop, buffer []byte) error {
 	if len(buffer) != internal.MetricSetSize{
-		return errors.New("wrong responseEnvelopSize : "+ strconv.Itoa(len(buffer)))
+		return errors.New("wrong MetricSetSize : "+ strconv.Itoa(len(buffer)))
 	}
 
 	tempFloat32 := (float32(binary.LittleEndian.Uint32(buffer[0:4])) * 501.3743 / 65536) - 273.6777
