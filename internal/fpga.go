@@ -95,18 +95,18 @@ func (d *FPGADevice) Close() (err error){
 }
 
 // Request send request into FPGA
-func (d *FPGADevice) Request(buffer []byte) (bool, error) {
+func (d *FPGADevice) Request(buffer []byte) (err error) {
 	writeSize, err := d.h2c.Write(buffer)
 	if err != nil {
-		return false, err
+		return
 	}
 
 	if writeSize != len(buffer) {
 		err = errors.New("write size not match.." + strconv.Itoa(writeSize))
-		return false, err
+		return
 	}
 
-	return true, nil
+	return nil
 }
 
 // Poll brings result from FPGA
@@ -149,7 +149,7 @@ func (d *FPGADevice) CheckAvailable() error{
 	return nil
 }
 
-// GetMetric returns device metric information
+// GetMetrics returns device metric information
 func (d *FPGADevice) GetMetrics() ([]byte, error){
 	buffer := make([]byte, MetricSetSize)
 

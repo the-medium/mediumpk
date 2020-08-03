@@ -119,13 +119,11 @@ func TestMediumpk_Sign_Mediumpk_verify(t *testing.T){
 	copy(d32[32-len(d):], d[:])
 	
 	var req RequestEnvelop = SignRequestEnvelop{d32, k32, h32}
-	ok, err := mediumpk.Request(&channel, req)
+	err = mediumpk.Request(&channel, req)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 
-	ok, err = mediumpk.GetResponseAndNotify()
+	err = mediumpk.GetResponseAndNotify()
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	resp := <- channel
 	assert.NotNil(t, resp)
 	assert.Equal(t, resp.Result(), 0)
@@ -151,13 +149,11 @@ func TestMediumpk_Sign_Mediumpk_verify(t *testing.T){
 	copy(s32[32-len(s):], s[:])
 	req = VerifyRequestEnvelop{qx32, qy32, r32, s32, h32}
 
-	ok, err = mediumpk.Request(&channel, req)
+	err = mediumpk.Request(&channel, req)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 
-	ok, err = mediumpk.GetResponseAndNotify()
+	err = mediumpk.GetResponseAndNotify()
 	assert.NoError(t, err)
-	assert.True(t, ok)
 
 	resp = <- channel
 	assert.NotNil(t, resp)
@@ -195,13 +191,11 @@ func TestMediumpk_Sign_CPU_Verify(t *testing.T){
 	d32 := make([]byte, 32)
 	copy(d32[32-len(d):], d[:])
 	var req RequestEnvelop = SignRequestEnvelop{d32, k, h}
-	ok, err := mediumpk.Request(&channel,req)
+	err = mediumpk.Request(&channel,req)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 
-	ok, err = mediumpk.GetResponseAndNotify()
+	err = mediumpk.GetResponseAndNotify()
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	resp := <- channel
 	assert.NotNil(t, resp)
 	assert.Equal(t, resp.Result(), 0)
@@ -265,13 +259,11 @@ func TestCPU_Sign_Mediumpk_Verify(t *testing.T){
 	copy(s32[32-len(s):], s[:])
 	copy(h32[32-len(h):], h[:])
 	var req RequestEnvelop = VerifyRequestEnvelop{qx32, qy32, r32, s32, h32}
-	ok, err := mediumpk.Request(&channel, req)
+	err = mediumpk.Request(&channel, req)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 
-	ok, err = mediumpk.GetResponseAndNotify()
+	err = mediumpk.GetResponseAndNotify()
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	resp := <- channel
 	assert.NotNil(t, resp)
 	assert.Equal(t, 0, resp.Result())
@@ -316,15 +308,13 @@ func Test_Sign_FPGA_Multi(t *testing.T){
 	for i := 0; i < maxPending; i++ {
 		channel := make(chan ResponseEnvelop, 1)
 		var req RequestEnvelop = SignRequestEnvelop{d32, k32, h32}
-		ok, err := mediumpk.Request(&channel, req)
+		err = mediumpk.Request(&channel, req)
 		assert.NoError(t, err)
-		assert.True(t, ok)
 		chList = append(chList, &channel)
 	}	
 	for i := 0; i < maxPending; i++{
-		ok, err := mediumpk.GetResponseAndNotify()
+		err = mediumpk.GetResponseAndNotify()
 		assert.NoError(t, err)
-		assert.True(t, ok)
 	}
 	
 	count := 0
@@ -413,13 +403,11 @@ func Test_Verify_FPGA(t *testing.T){
 
 	channel := make(chan ResponseEnvelop, 1)
 	var req RequestEnvelop = VerifyRequestEnvelop{qx32, qy32, r32, s32, h32}
-	ok, err := mediumpk.Request(&channel, req)
+	err = mediumpk.Request(&channel, req)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 
-	ok, err = mediumpk.GetResponseAndNotify()
+	err = mediumpk.GetResponseAndNotify()
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	resp := <- channel
 	assert.NotNil(t, resp)
 	assert.Equal(t, 0, resp.Result())
@@ -467,15 +455,13 @@ func Test_Verify_FPGA_Multi(t *testing.T){
 	for i := 0; i < maxPending; i++ {
 		channel := make(chan ResponseEnvelop, 1)
 		var req RequestEnvelop = VerifyRequestEnvelop{qx32, qy32, r32, s32, h32}
-		ok, err := mediumpk.Request(&channel, req)
+		err = mediumpk.Request(&channel, req)
 		assert.NoError(t, err)
-		assert.True(t, ok)
 		chList = append(chList, &channel)
 	}	
 	for i := 0; i < maxPending; i++{
-		ok, err := mediumpk.GetResponseAndNotify()
+		err := mediumpk.GetResponseAndNotify()
 		assert.NoError(t, err)
-		assert.True(t, ok)
 	}
 	
 	count := 0

@@ -60,9 +60,8 @@ func TestFPGA_Sign_CPU_Verify(t *testing.T) {
 	assert.NotNil(t, dev)
 
 	// send request
-	ok, err := dev.Request(reqBuf)
+	err = dev.Request(reqBuf)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 
 	// poll result
 	respBuf, err := dev.Poll()	
@@ -79,7 +78,7 @@ func TestFPGA_Sign_CPU_Verify(t *testing.T) {
 	publicKey := privateKey.PublicKey
 	rBig := new(big.Int); rBig.SetBytes(respBuf[16:48])
 	sBig := new(big.Int); sBig.SetBytes(respBuf[48:80])
-	ok = ecdsa.Verify(&publicKey, h32, rBig, sBig)
+	ok := ecdsa.Verify(&publicKey, h32, rBig, sBig)
 	assert.True(t, ok)
 }
 
@@ -138,9 +137,8 @@ func TestCPU_Sign_FPGA_Verify(t *testing.T) {
 	assert.NotNil(t, dev)
 
 	// send verify request
-	ok, err := dev.Request(reqBuf)
+	err = dev.Request(reqBuf)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 
 	// poll result
 	respBuf, err := dev.Poll()	

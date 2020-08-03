@@ -36,10 +36,10 @@ func(m *Mediumpk) Close() error{
 }
 
 // Request send sign/verify request to FPGA
-func(m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) (bool, error){
+func(m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) error {
 	idx, err := m.putChannel(pchan)
 	if(err != nil){
-		return false, err
+		return err
 	}
 
 	return m.dev.Request(env.Bytes(serializer{}, idx))
@@ -47,26 +47,26 @@ func(m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) (bool
 
 
 // GetResponseAndNotify get response from FPGA and send it to channel
-func(m *Mediumpk) GetResponseAndNotify() (bool, error){
+func(m *Mediumpk) GetResponseAndNotify() (err error){
 	buffer, err := m.dev.Poll()
 	if(err != nil){
-		return false, err 
+		return  
 	}
 
 	var resEnv ResponseEnvelop 
 	idx, err := resEnv.Deserialize(deserializer{}, buffer)
 	if(err != nil){
-		return false, err
+		return
 	}
 	
 	ch, err := m.getChannel(idx)
 	if(err != nil){
-		return false, err
+		return
 	}
 	
 	*ch <- resEnv
 
-	return true, nil
+	return
 }
 
 // must not be called concurrently
