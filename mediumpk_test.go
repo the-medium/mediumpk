@@ -12,7 +12,7 @@ import(
 
 	"github.com/stretchr/testify/assert"
 )
-var maxPending int = 6
+var maxPending int = 64
 var devIndex int = 0
 
 func TestMediumpk_New(t *testing.T) {
@@ -491,11 +491,11 @@ func Test_startLogging(t *testing.T){
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
 
-	mediumpk.startMetric(3)
+	mediumpk.StartMetric(3)
 
 	time.Sleep(9 * time.Second)
 
-	err = mediumpk.stopMetric()
+	err = mediumpk.StopMetric()
 	assert.NoError(t, err)
 
 	err = mediumpk.Close()

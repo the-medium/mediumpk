@@ -93,7 +93,8 @@ func(m *Mediumpk) getChannel(i int) (*chan ResponseEnvelop, error){
 	return resChan, nil
 }
 
-func (m *Mediumpk) startMetric(interval int){
+// StartMetric starts export metric as a file updated every interval seconds
+func (m *Mediumpk) StartMetric(interval int){
 	go func(interval int){
 		ticker := time.NewTicker(time.Duration(interval) * time.Second)
 		var resEnv MetricEnvelop
@@ -124,7 +125,9 @@ func (m *Mediumpk) startMetric(interval int){
 		m.chanStopMetric <- true
 	}(interval)
 }
-func (m *Mediumpk) stopMetric() (err error) {
+
+// StopMetric stops updating metric file
+func (m *Mediumpk) StopMetric() (err error) {
 	m.chanStopMetric <- true
 	ticker := time.NewTicker(time.Duration(1) * time.Second)
 	leftCount := 10
