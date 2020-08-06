@@ -3,7 +3,10 @@ package mediumpk
 import (
 	"errors"
 	"fmt"
+	"log"
+	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/the-medium/mediumpk/internal"
@@ -14,20 +17,20 @@ type Mediumpk struct{
 	index		int
 	dev 		*internal.FPGADevice
 	chanStore 	[]*chan ResponseEnvelop
-	chanStopMetric chan bool
-	metricExportDir	string
+	chanEnd		chan bool
+	socketAddr	string
 }
 
 // New creates and returns Mediumpk instance
-func New(index int, maxPending int, metricExportDir string) (*Mediumpk, error){
+func New(index int, maxPending int) (*Mediumpk, error){
 	dev, err := internal.NewFPGADevice(index)
 	if(err != nil){
 		return nil, err
 	}
-	if metricExportDir == ""{
-		metricExportDir = "./"
-	}
-	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), metricExportDir}, nil
+	
+	socketAddr := "/tmp/fpga" + strconv.Itoa(index) + ".sock"
+	
+	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), socketAddr}, nil
 }
 
 // Close releases Mediumpk instance
@@ -93,56 +96,76 @@ func(m *Mediumpk) getChannel(i int) (*chan ResponseEnvelop, error){
 	return resChan, nil
 }
 
-// StartMetric starts export metric as a file updated every interval seconds
-func (m *Mediumpk) StartMetric(interval int){
-	go func(interval int){
-		ticker := time.NewTicker(time.Duration(interval) * time.Second)
-		var resEnv MetricEnvelop
-		fileName := fmt.Sprintf("%s/fpga%d.stat", m.metricExportDir, m.index)
-		stop := false
-		for !stop {
-			select{
-			case <- m.chanStopMetric:
-				stop = true
-			case <- ticker.C:
-				buffer, err := m.dev.GetMetrics()
-				err = resEnv.Deserialize(deserializer{}, buffer)
-				if err != nil {
-					fmt.Println(err)
-				}
+// StartMetric starts unix socket server to export metrics
+func (m *Mediumpk) StartMetric(){
+	go func(){
+		if err := os.RemoveAll(m.socketAddr); err != nil {
+			log.Fatal(err)
+		}
 
-				vccint, vccaux, vccbram := resEnv.Voltages() 		
-				fd, err := os.OpenFile(fileName, os.O_WRONLY | os.O_TRUNC | os.O_CREATE, os.FileMode(0644))
+		l, err := net.Listen("unix", m.socketAddr)
+		if err != nil {
+			log.Fatal("listen error:", err)
+		}
+		defer l.Close()
+	
+		for {
+			select{
+			case <- m.chanEnd:
+				break
+			default:
+				// Accept new connections, dispatching them to echoServer
+				// in a goroutine.
+				conn, err := l.Accept()
 				if err != nil {
-					fmt.Print(err)
-				}else{
-					fd.WriteString(fmt.Sprintf("Temperature:%s\nvccint:%s\nvccaux:%s\nvccbram:%s\ncount:%d", resEnv.Temperature(), vccint, vccaux, vccbram, resEnv.Count()))
+					log.Fatal("accept error:", err)
 				}
-				fd.Close()
+		
+				go m.echoServer(conn)	
 			}
 		}
-		fmt.Printf("stopping Metric goroutine\n")
-		m.chanStopMetric <- true
-	}(interval)
+		m.chanEnd <- true
+	}()
 }
 
-// StopMetric stops updating metric file
+// StopMetric stops unix socket server
 func (m *Mediumpk) StopMetric() (err error) {
-	m.chanStopMetric <- true
+	m.chanEnd <- true
 	ticker := time.NewTicker(time.Duration(1) * time.Second)
 	leftCount := 10
 	for leftCount > 0{
 		select{
-		case <- m.chanStopMetric:
+		case <- m.chanEnd:
 			leftCount = -1
 		case <- ticker.C:
-			fmt.Printf("Metric goroutine is not responding. check count left : %d\n", leftCount)
+			fmt.Printf("metric server goroutine is not responding. check count left : %d\n", leftCount)
 			leftCount--
 		}
 	}
 
 	if leftCount == 0{
-		err = fmt.Errorf("metric goroutine is not stopped properly")
+		err = fmt.Errorf("metric server goroutine is not stopped properly")
+	}else{
+		log.Println("metric server goroutine is stopped")
 	}
-	return
+	
+	return nil
+}
+
+func (m *Mediumpk) echoServer(c net.Conn) {
+	var resEnv MetricEnvelop
+	buffer, err := m.dev.GetMetrics()
+	if err != nil {
+		log.Println(err)
+	}
+	
+	err = resEnv.Deserialize(deserializer{}, buffer)
+	if err != nil {
+		log.Println(err)
+	}
+
+	vccint, vccaux, vccbram := resEnv.Voltages()
+	msg := []byte(fmt.Sprintf("Temperature:%s vccint:%s vccaux:%s vccbram:%s count:%d\n", resEnv.Temperature(), vccint, vccaux, vccbram, resEnv.Count()))
+	c.Write(msg)
+	c.Close()
 }

@@ -17,7 +17,7 @@ var devIndex int = 0
 
 func TestMediumpk_New(t *testing.T) {
 	// new mediumpk
-	mediumpk, err := New(devIndex, maxPending, "")
+	mediumpk, err := New(devIndex, maxPending)
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
 
@@ -29,7 +29,7 @@ func TestMediumpk_New(t *testing.T) {
 
 func TestMediumpk_Store_Channel(t *testing.T) {
 	// new mediumpk
-	mediumpk, err := New(devIndex, maxPending, "")
+	mediumpk, err := New(devIndex, maxPending)
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
 	chanStore :=	make([]*chan ResponseEnvelop, maxPending)
@@ -92,7 +92,7 @@ func TestCPU_Sign_CPU_Verify(t *testing.T){
 }
 
 func TestMediumpk_Sign_Mediumpk_verify(t *testing.T){
-	mediumpk, err := New(devIndex, maxPending, "")
+	mediumpk, err := New(devIndex, maxPending)
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
 	
@@ -165,7 +165,7 @@ func TestMediumpk_Sign_Mediumpk_verify(t *testing.T){
 }
 
 func TestMediumpk_Sign_CPU_Verify(t *testing.T){
-	mediumpk, err := New(devIndex, maxPending, "")
+	mediumpk, err := New(devIndex, maxPending)
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
 	
@@ -219,7 +219,7 @@ func TestMediumpk_Sign_CPU_Verify(t *testing.T){
 }
 
 func TestCPU_Sign_Mediumpk_Verify(t *testing.T){
-	mediumpk, err := New(devIndex, maxPending, "")
+	mediumpk, err := New(devIndex, maxPending)
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
 
@@ -280,7 +280,7 @@ var strRExpected = "f3ac8061b514795b8843e3d6629527ed2afd6b1f6a555a7acabb5e6f79c8
 var strSExpected = "6e9a1aee9981cc4a102aa7033fdf633b39be438527865373edfe90f2ea9e29ac"
 
 func Test_Sign_FPGA_Multi(t *testing.T){
-	mediumpk, err := New(devIndex, maxPending, "")
+	mediumpk, err := New(devIndex, maxPending)
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
 
@@ -369,7 +369,7 @@ func Test_Verify_CPU(t *testing.T){
 }
 
 func Test_Verify_FPGA(t *testing.T){
-	mediumpk, err := New(devIndex, maxPending, "")
+	mediumpk, err := New(devIndex, maxPending)
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
 
@@ -418,7 +418,7 @@ func Test_Verify_FPGA(t *testing.T){
 }
 
 func Test_Verify_FPGA_Multi(t *testing.T){
-	mediumpk, err := New(devIndex, maxPending, "")
+	mediumpk, err := New(devIndex, maxPending)
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
 
@@ -487,13 +487,13 @@ func Test_Verify_FPGA_Multi(t *testing.T){
 }
 
 func Test_startLogging(t *testing.T){
-	mediumpk, err := New(devIndex, maxPending, "")
+	mediumpk, err := New(devIndex, maxPending)
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
 
-	mediumpk.StartMetric(3)
+	mediumpk.StartMetric()
 
-	time.Sleep(9 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	err = mediumpk.StopMetric()
 	assert.NoError(t, err)
