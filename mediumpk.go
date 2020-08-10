@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/the-medium/mediumpk/internal"
@@ -19,6 +20,7 @@ type Mediumpk struct{
 	chanStore 	[]*chan ResponseEnvelop
 	chanEnd		chan bool
 	socketAddr	string
+	count 		int32
 }
 
 // New creates and returns Mediumpk instance
@@ -30,7 +32,7 @@ func New(index int, maxPending int) (*Mediumpk, error){
 	
 	socketAddr := "/tmp/fpga" + strconv.Itoa(index) + ".sock"
 	
-	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), socketAddr}, nil
+	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), socketAddr, 0}, nil
 }
 
 // Close releases Mediumpk instance
@@ -44,6 +46,8 @@ func(m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) error
 	if(err != nil){
 		return err
 	}
+
+	atomic.AddInt32(&m.count, 1)
 
 	return m.dev.Request(env.Bytes(serializer{}, idx))
 }
@@ -66,6 +70,8 @@ func(m *Mediumpk) GetResponseAndNotify() (err error){
 	if(err != nil){
 		return
 	}
+
+	atomic.AddInt32(&m.count, -1)
 	
 	*ch <- resEnv
 
@@ -165,7 +171,8 @@ func (m *Mediumpk) echoServer(c net.Conn) {
 	}
 
 	vccint, vccaux, vccbram := resEnv.Voltages()
-	msg := []byte(fmt.Sprintf("Temperature:%s vccint:%s vccaux:%s vccbram:%s count:%d\n", resEnv.Temperature(), vccint, vccaux, vccbram, resEnv.Count()))
+	// msg := []byte(fmt.Sprintf("Temperature:%s vccint:%s vccaux:%s vccbram:%s count:%d\n", resEnv.Temperature(), vccint, vccaux, vccbram, resEnv.Count()))
+	msg := []byte(fmt.Sprintf("Temperature:%s vccint:%s vccaux:%s vccbram:%s count:%d\n", resEnv.Temperature(), vccint, vccaux, vccbram, m.count))
 	c.Write(msg)
 	c.Close()
 }
