@@ -188,3 +188,17 @@ func TestFPGADevice_Reset(t *testing.T) {
 	err = dev.Close()
 	assert.NoError(t, err)
 }
+
+func TestFPGADevice_Version(t *testing.T) {
+	dev, err := NewFPGADevice(1)
+	assert.NoError(t, err)
+	assert.NotNil(t, dev)
+
+	v, err := dev.Version()
+
+	assert.NoError(t, err)
+	assert.NotEqual(t, "", v)
+
+	err = dev.Close()
+	assert.NoError(t, err)
+}

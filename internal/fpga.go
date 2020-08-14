@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"errors"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"os"
@@ -185,4 +186,25 @@ func (d *FPGADevice) Reset() error{
 	}
 
 	return nil	
+}
+
+func (d *FPGADevice) Version() (string, error){
+	buffer := make([]byte, rwUnitBytes)
+
+	idx := 0
+	detail := []string{"FPGA_INFO"}
+	pos := []int64{0x18000}
+	for i, v := range pos{
+		readSize, err := d.user.ReadAt(buffer[idx:idx+4], v)
+		if err != nil{
+			return "", err
+		}
+		if readSize != rwUnitBytes {
+			return "", fmt.Errorf("[user] readSize %d not match with %d at 0x%x... %s", readSize, rwUnitBytes, v, detail[i])
+		}
+		idx += readSize
+	}
+	
+    u := binary.LittleEndian.Uint32(buffer[0:4])
+	return fmt.Sprintf("%x\n", u), nil
 }

@@ -176,3 +176,7 @@ func (m *Mediumpk) echoServer(c net.Conn) {
 	c.Write(msg)
 	c.Close()
 }
+
+func (m *Mediumpk) GetVersion() (string, error) {
+	return m.dev.Version()
+}

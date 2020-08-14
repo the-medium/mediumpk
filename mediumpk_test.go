@@ -296,7 +296,7 @@ func Test_Sign_FPGA_Multi(t *testing.T){
 	H := new(big.Int); H.SetString(strH1, 16)
 	assert.NoError(t, err)
 	
-	// mediumpk verify
+	// mediumpk sign
 	d32 := make([]byte, 32)
 	k32 := make([]byte, 32)
 	h32 := make([]byte, 32)
@@ -493,11 +493,25 @@ func Test_startLogging(t *testing.T){
 
 	mediumpk.StartMetric()
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	err = mediumpk.StopMetric()
 	assert.NoError(t, err)
 
+	err = mediumpk.Close()
+	assert.NoError(t, err)
+	assert.NotNil(t, mediumpk)
+}
+
+func Test_GetVersion(t *testing.T){
+	mediumpk, err := New(devIndex, maxPending)
+	assert.NoError(t, err)
+	assert.NotNil(t, mediumpk)
+
+	v, err := mediumpk.GetVersion()
+	assert.NoError(t, err)
+	assert.NotEqual(t, v, "")
+	fmt.Println(v)
 	err = mediumpk.Close()
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)
