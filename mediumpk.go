@@ -180,9 +180,9 @@ func (m *Mediumpk) echoServer(c net.Conn) {
 	}
 
 	vccint, vccaux, vccbram := resEnv.Voltages()
-	// msg := []byte(fmt.Sprintf("Temperature:%s vccint:%s vccaux:%s vccbram:%s count:%d\n", resEnv.Temperature(), vccint, vccaux, vccbram, resEnv.Count()))
-	msg := []byte(fmt.Sprintf("Temperature:%s vccint:%s vccaux:%s vccbram:%s count:%d\n", resEnv.Temperature(), vccint, vccaux, vccbram, m.count))
-	c.Write(msg)
+	msg := fmt.Sprintf(`{"m_temperature":%s, "m_vccint":%s, "m_vccaux":%s, "m_vccbram":%s, "m_count":%d}}`, resEnv.Temperature(), vccint, vccaux, vccbram, m.count)
+	msgBytes := []byte(msg)
+	c.Write(msgBytes)
 	c.Close()
 }
 
