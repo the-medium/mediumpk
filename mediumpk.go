@@ -24,19 +24,28 @@ type Mediumpk struct{
 }
 
 // New creates and returns Mediumpk instance
-func New(index int, maxPending int) (*Mediumpk, error){
+func New(index int, maxPending int, socketPath string) (*Mediumpk, error){
+	if socketPath == ""{
+		socketPath = "/var/run/"
+	}else{
+		_, err := os.Stat(socketPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+	socketAddr := fmt.Sprintf("%s%s%s%s", socketPath, "/mbpu", strconv.Itoa(index), ".sock")
+
 	dev, err := internal.NewFPGADevice(index)
 	if(err != nil){
 		return nil, err
-	}
-	
-	socketAddr := "/var/run/mbpu" + strconv.Itoa(index) + ".sock"
+	}	
 	
 	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), socketAddr, 0}, nil
 }
 
 // Close releases Mediumpk instance
 func(m *Mediumpk) Close() error{
+	m.StopMetric()
 	return m.dev.Close()
 }
 
@@ -144,7 +153,7 @@ func (m *Mediumpk) StopMetric() (err error) {
 		case <- m.chanEnd:
 			leftCount = -1
 		case <- ticker.C:
-			fmt.Printf("metric server goroutine is not responding. check count left : %d\n", leftCount)
+			fmt.Printf("[metric server] goroutine is not responding. check count left : %d\n", leftCount)
 			leftCount--
 		}
 	}
@@ -152,7 +161,7 @@ func (m *Mediumpk) StopMetric() (err error) {
 	if leftCount == 0{
 		err = fmt.Errorf("metric server goroutine is not stopped properly")
 	}else{
-		log.Println("metric server goroutine is stopped")
+		log.Println("[metric server] goroutine is properly stopped")
 	}
 	
 	return nil
