@@ -4,7 +4,7 @@
 [INPUT]
     Name           exec
     Tag            fpga
-    Command        nc -U /tmp/fpga1.sock
+    Command        nc -U /var/run/fpga0.sock
     Interval_Sec   1
     Interval_NSec  0
     Buf_Size       1kb

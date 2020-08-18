@@ -30,7 +30,7 @@ func New(index int, maxPending int) (*Mediumpk, error){
 		return nil, err
 	}
 	
-	socketAddr := "/tmp/mbpu" + strconv.Itoa(index) + ".sock"
+	socketAddr := "/var/run/mbpu" + strconv.Itoa(index) + ".sock"
 	
 	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), socketAddr, 0}, nil
 }
