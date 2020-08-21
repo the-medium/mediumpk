@@ -12,7 +12,7 @@ import(
 
 	"github.com/stretchr/testify/assert"
 )
-var maxPending int = 64
+var maxPending int = 100
 var devIndex int = 0
 
 func TestMediumpk_New(t *testing.T) {
@@ -481,22 +481,22 @@ func Test_Verify_FPGA_Multi(t *testing.T){
 		assert.NoError(t, err)
 	}
 	
-	count := 0
+	count := 1
 	var resp ResponseEnvelop
-	for{
-		for _, v := range chList{
-			select {
-			case resp = <- *v:
-				assert.NotNil(t, resp)
-				assert.Equal(t, 0, resp.Result())
-				count = count + 1
-			default:
-			}
+	
+	for _, v := range chList{
+		select {
+		case resp = <- *v:
+			fmt.Printf("%03d : %d\n", count, resp.Result())
+			assert.NotNil(t, resp)
+			assert.Equal(t, 0, resp.Result())
+	
+		default:
 		}
-		if count == maxPending{
-			break
-		}
+		count++
 	}
+		
+	
 
 	err = mediumpk.Close()
 	assert.NoError(t, err)
