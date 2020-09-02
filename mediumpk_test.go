@@ -512,9 +512,6 @@ func Test_startLogging(t *testing.T){
 
 	time.Sleep(1 * time.Second)
 
-	err = mediumpk.StopMetric()
-	assert.NoError(t, err)
-
 	err = mediumpk.Close()
 	assert.NoError(t, err)
 	assert.NotNil(t, mediumpk)

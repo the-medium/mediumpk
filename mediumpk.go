@@ -21,6 +21,7 @@ type Mediumpk struct{
 	chanEnd		chan bool
 	socketAddr	string
 	count 		int32
+	metricOn	bool
 }
 
 // New creates and returns Mediumpk instance
@@ -40,7 +41,7 @@ func New(index int, maxPending int, socketPath string) (*Mediumpk, error){
 		return nil, err
 	}	
 	
-	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), socketAddr, 0}, nil
+	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), socketAddr, 0, false}, nil
 }
 
 // Close releases Mediumpk instance
@@ -113,6 +114,12 @@ func(m *Mediumpk) getChannel(i int) (*chan ResponseEnvelop, error){
 
 // StartMetric starts unix socket server to export metrics
 func (m *Mediumpk) StartMetric(){
+	if m.metricOn == true{
+		log.Println("Metric is already started")
+		return
+	}
+
+	m.metricOn = true
 	go func(){
 		if err := os.RemoveAll(m.socketAddr); err != nil {
 			log.Fatal(err)
@@ -145,6 +152,10 @@ func (m *Mediumpk) StartMetric(){
 
 // StopMetric stops unix socket server
 func (m *Mediumpk) StopMetric() (err error) {
+	if m.metricOn == false {
+		return nil
+	}
+	
 	m.chanEnd <- true
 	ticker := time.NewTicker(time.Duration(1) * time.Second)
 	leftCount := 10
@@ -159,7 +170,7 @@ func (m *Mediumpk) StopMetric() (err error) {
 	}
 
 	if leftCount == 0{
-		err = fmt.Errorf("metric server goroutine is not stopped properly")
+		err = fmt.Errorf("[metric server] goroutine is not stopped properly")
 	}else{
 		log.Println("[metric server] goroutine is properly stopped")
 	}
