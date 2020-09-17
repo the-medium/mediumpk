@@ -1,6 +1,6 @@
 package mediumpk
 
-import(
+import (
 	"encoding/hex"
 	"testing"
 
@@ -16,7 +16,7 @@ func TestSerializeSignRequest(t *testing.T) {
 	// k
 	k, err := hex.DecodeString(strK)
 	assert.NoError(t, err)
-	
+
 	// hash
 	h, err := hex.DecodeString(strH1)
 	assert.NoError(t, err)
@@ -119,10 +119,10 @@ func TestDeserializeResponse(t *testing.T) {
 }
 
 func TestDeserializeMetric(t *testing.T) {
-	buffer :=  []byte{236, 160, 0, 0, 218, 69, 0, 0, 122, 154, 0, 0, 226, 69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	
+	buffer := []byte{236, 160, 0, 0, 218, 69, 0, 0, 122, 154, 0, 0, 226, 69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+
 	env := MetricEnvelop{}
-	
+
 	// deserialize buffer
 	d := deserializer{}
 	err := d.deserializeMetric(&env, buffer)

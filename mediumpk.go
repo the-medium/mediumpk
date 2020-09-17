@@ -14,21 +14,21 @@ import (
 )
 
 // Mediumpk is a structure to interact with FPGA
-type Mediumpk struct{
-	index		int
-	dev 		*internal.FPGADevice
-	chanStore 	[]*chan ResponseEnvelop
-	chanEnd		chan bool
-	socketAddr	string
-	count 		int32
-	metricOn	bool
+type Mediumpk struct {
+	index      int
+	dev        *internal.FPGADevice
+	chanStore  []*chan ResponseEnvelop
+	chanEnd    chan bool
+	socketAddr string
+	count      int32
+	metricOn   bool
 }
 
 // New creates and returns Mediumpk instance
-func New(index int, maxPending int, socketPath string) (*Mediumpk, error){
-	if socketPath == ""{
+func New(index int, maxPending int, socketPath string) (*Mediumpk, error) {
+	if socketPath == "" {
 		socketPath = "/var/run/"
-	}else{
+	} else {
 		_, err := os.Stat(socketPath)
 		if err != nil {
 			return nil, err
@@ -37,23 +37,23 @@ func New(index int, maxPending int, socketPath string) (*Mediumpk, error){
 	socketAddr := fmt.Sprintf("%s%s%s%s", socketPath, "/mbpu", strconv.Itoa(index), ".sock")
 
 	dev, err := internal.NewFPGADevice(index)
-	if(err != nil){
+	if err != nil {
 		return nil, err
-	}	
-	
+	}
+
 	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), socketAddr, 0, false}, nil
 }
 
 // Close releases Mediumpk instance
-func(m *Mediumpk) Close() error{
+func (m *Mediumpk) Close() error {
 	m.StopMetric()
 	return m.dev.Close()
 }
 
 // Request send sign/verify request to FPGA
-func(m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) error {
+func (m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) error {
 	idx, err := m.putChannel(pchan)
-	if(err != nil){
+	if err != nil {
 		return err
 	}
 
@@ -62,36 +62,35 @@ func(m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) error
 	return m.dev.Request(env.Bytes(serializer{}, idx))
 }
 
-
 // GetResponseAndNotify get response from FPGA and send it to channel
-func(m *Mediumpk) GetResponseAndNotify() (err error){
+func (m *Mediumpk) GetResponseAndNotify() (err error) {
 	buffer, err := m.dev.Poll()
-	if(err != nil){
-		return  
-	}
-
-	var resEnv ResponseEnvelop 
-	idx, err := resEnv.Deserialize(deserializer{}, buffer)
-	if(err != nil){
+	if err != nil {
 		return
 	}
-	
+
+	var resEnv ResponseEnvelop
+	idx, err := resEnv.Deserialize(deserializer{}, buffer)
+	if err != nil {
+		return
+	}
+
 	ch, err := m.getChannel(idx)
-	if(err != nil){
+	if err != nil {
 		return
 	}
 
 	atomic.AddInt32(&m.count, -1)
-	
+
 	*ch <- resEnv
 
 	return
 }
 
 // must not be called concurrently
-func(m *Mediumpk) putChannel(resChan *chan ResponseEnvelop) (int, error){
+func (m *Mediumpk) putChannel(resChan *chan ResponseEnvelop) (int, error) {
 	for i, c := range m.chanStore {
-		if c == nil{
+		if c == nil {
 			m.chanStore[i] = resChan
 			return i, nil
 		}
@@ -100,27 +99,27 @@ func(m *Mediumpk) putChannel(resChan *chan ResponseEnvelop) (int, error){
 }
 
 // must not be called concurrently
-func(m *Mediumpk) getChannel(i int) (*chan ResponseEnvelop, error){
-	if( i >= len(m.chanStore)){
+func (m *Mediumpk) getChannel(i int) (*chan ResponseEnvelop, error) {
+	if i >= len(m.chanStore) {
 		return nil, errors.New("out of range")
 	}
 	if m.chanStore[i] == nil {
 		return nil, errors.New("nil chanStore")
 	}
-	resChan :=  m.chanStore[i]
+	resChan := m.chanStore[i]
 	m.chanStore[i] = nil
 	return resChan, nil
 }
 
 // StartMetric starts unix socket server to export metrics
-func (m *Mediumpk) StartMetric(){
-	if m.metricOn == true{
+func (m *Mediumpk) StartMetric() {
+	if m.metricOn == true {
 		log.Println("Metric is already started")
 		return
 	}
 
 	m.metricOn = true
-	go func(){
+	go func() {
 		if err := os.RemoveAll(m.socketAddr); err != nil {
 			log.Fatal(err)
 		}
@@ -130,10 +129,10 @@ func (m *Mediumpk) StartMetric(){
 			log.Fatal("listen error:", err)
 		}
 		defer l.Close()
-	
+
 		for {
-			select{
-			case <- m.chanEnd:
+			select {
+			case <-m.chanEnd:
 				break
 			default:
 				// Accept new connections, dispatching them to echoServer
@@ -142,11 +141,10 @@ func (m *Mediumpk) StartMetric(){
 				if err != nil {
 					log.Fatal("accept error:", err)
 				}
-		
-				go m.echoServer(conn)	
+
+				go m.echoServer(conn)
 			}
 		}
-		m.chanEnd <- true
 	}()
 }
 
@@ -155,26 +153,26 @@ func (m *Mediumpk) StopMetric() (err error) {
 	if m.metricOn == false {
 		return nil
 	}
-	
+
 	m.chanEnd <- true
 	ticker := time.NewTicker(time.Duration(1) * time.Second)
 	leftCount := 10
-	for leftCount > 0{
-		select{
-		case <- m.chanEnd:
+	for leftCount > 0 {
+		select {
+		case <-m.chanEnd:
 			leftCount = -1
-		case <- ticker.C:
+		case <-ticker.C:
 			fmt.Printf("[metric server] goroutine is not responding. check count left : %d\n", leftCount)
 			leftCount--
 		}
 	}
 
-	if leftCount == 0{
+	if leftCount == 0 {
 		err = fmt.Errorf("[metric server] goroutine is not stopped properly")
-	}else{
+	} else {
 		log.Println("[metric server] goroutine is properly stopped")
 	}
-	
+
 	return nil
 }
 
@@ -184,7 +182,7 @@ func (m *Mediumpk) echoServer(c net.Conn) {
 	if err != nil {
 		log.Println(err)
 	}
-	
+
 	err = resEnv.Deserialize(deserializer{}, buffer)
 	if err != nil {
 		log.Println(err)
@@ -197,6 +195,7 @@ func (m *Mediumpk) echoServer(c net.Conn) {
 	c.Close()
 }
 
+// GetVersion return mbpu version imformation
 func (m *Mediumpk) GetVersion() (string, error) {
 	return m.dev.Version()
 }
