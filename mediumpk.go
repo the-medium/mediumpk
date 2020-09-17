@@ -51,15 +51,15 @@ func (m *Mediumpk) Close() error {
 }
 
 // Request send sign/verify request to FPGA
-func (m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) error {
+func (m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) (int, error) {
 	idx, err := m.putChannel(pchan)
 	if err != nil {
-		return err
+		return idx, err
 	}
 
 	atomic.AddInt32(&m.count, 1)
 
-	return m.dev.Request(env.Bytes(serializer{}, idx))
+	return idx, m.dev.Request(env.Bytes(serializer{}, idx))
 }
 
 // GetResponseAndNotify get response from FPGA and send it to channel

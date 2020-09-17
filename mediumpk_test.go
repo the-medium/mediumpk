@@ -137,7 +137,8 @@ func TestMediumpk_Sign_Mediumpk_verify(t *testing.T) {
 	copy(d32[32-len(d):], d[:])
 
 	var req RequestEnvelop = SignRequestEnvelop{d32, k32, h32}
-	err = mediumpk.Request(&channel, req)
+	idx, err := mediumpk.Request(&channel, req)
+	assert.NotEqual(t, -1, idx)
 	assert.NoError(t, err)
 
 	err = mediumpk.GetResponseAndNotify()
@@ -167,7 +168,8 @@ func TestMediumpk_Sign_Mediumpk_verify(t *testing.T) {
 	copy(s32[32-len(s):], s[:])
 	req = VerifyRequestEnvelop{qx32, qy32, r32, s32, h32}
 
-	err = mediumpk.Request(&channel, req)
+	idx, err = mediumpk.Request(&channel, req)
+	assert.NotEqual(t, -1, idx)
 	assert.NoError(t, err)
 
 	err = mediumpk.GetResponseAndNotify()
@@ -209,7 +211,8 @@ func TestMediumpk_Sign_CPU_Verify(t *testing.T) {
 	d32 := make([]byte, 32)
 	copy(d32[32-len(d):], d[:])
 	var req RequestEnvelop = SignRequestEnvelop{d32, k, h}
-	err = mediumpk.Request(&channel, req)
+	idx, err := mediumpk.Request(&channel, req)
+	assert.NotEqual(t, -1, idx)
 	assert.NoError(t, err)
 
 	err = mediumpk.GetResponseAndNotify()
@@ -279,7 +282,8 @@ func TestCPU_Sign_Mediumpk_Verify(t *testing.T) {
 	copy(s32[32-len(s):], s[:])
 	copy(h32[32-len(h):], h[:])
 	var req RequestEnvelop = VerifyRequestEnvelop{qx32, qy32, r32, s32, h32}
-	err = mediumpk.Request(&channel, req)
+	idx, err := mediumpk.Request(&channel, req)
+	assert.NotEqual(t, -1, idx)
 	assert.NoError(t, err)
 
 	err = mediumpk.GetResponseAndNotify()
@@ -331,7 +335,8 @@ func Test_Sign_FPGA_Multi(t *testing.T) {
 	for i := 0; i < maxPending; i++ {
 		channel := make(chan ResponseEnvelop, 1)
 		var req RequestEnvelop = SignRequestEnvelop{d32, k32, h32}
-		err = mediumpk.Request(&channel, req)
+		idx, err := mediumpk.Request(&channel, req)
+		assert.NotEqual(t, -1, idx)
 		assert.NoError(t, err)
 		chList = append(chList, &channel)
 	}
@@ -436,7 +441,8 @@ func Test_Verify_FPGA(t *testing.T) {
 
 	channel := make(chan ResponseEnvelop, 1)
 	var req RequestEnvelop = VerifyRequestEnvelop{qx32, qy32, r32, s32, h32}
-	err = mediumpk.Request(&channel, req)
+	idx, err := mediumpk.Request(&channel, req)
+	assert.NotEqual(t, -1, idx)
 	assert.NoError(t, err)
 
 	err = mediumpk.GetResponseAndNotify()
@@ -493,7 +499,8 @@ func Test_Verify_FPGA_Multi(t *testing.T) {
 	for i := 0; i < maxPending; i++ {
 		channel := make(chan ResponseEnvelop, 1)
 		var req RequestEnvelop = VerifyRequestEnvelop{qx32, qy32, r32, s32, h32}
-		err = mediumpk.Request(&channel, req)
+		idx, err := mediumpk.Request(&channel, req)
+		assert.NotEqual(t, -1, idx)
 		assert.NoError(t, err)
 		chList = append(chList, &channel)
 	}
