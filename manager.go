@@ -147,7 +147,6 @@ func (fm *mbpuManager) runPushing() {
 		}
 
 	}
-	close(fm.chanRequest)
 	fm.chanEmergency <- false
 }
 
