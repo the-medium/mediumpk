@@ -25,7 +25,7 @@ type Mediumpk struct {
 }
 
 // New creates and returns Mediumpk instance
-func New(index int, maxPending int, socketPath string) (*Mediumpk, error) {
+func newMediumpk(index int, maxPending int, socketPath string) (*Mediumpk, error) {
 	if socketPath == "" {
 		socketPath = "/var/run/"
 	} else {
@@ -45,13 +45,13 @@ func New(index int, maxPending int, socketPath string) (*Mediumpk, error) {
 }
 
 // Close releases Mediumpk instance
-func (m *Mediumpk) Close() error {
-	m.StopMetric()
+func (m *Mediumpk) close() error {
+	m.stopMetric()
 	return m.dev.Close()
 }
 
 // Request send sign/verify request to FPGA
-func (m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) (int, error) {
+func (m *Mediumpk) request(pchan *chan ResponseEnvelop, env RequestEnvelop) (int, error) {
 	idx, err := m.putChannel(pchan)
 	if err != nil {
 		return idx, err
@@ -62,8 +62,8 @@ func (m *Mediumpk) Request(pchan *chan ResponseEnvelop, env RequestEnvelop) (int
 	return idx, m.dev.Request(env.Bytes(serializer{}, idx))
 }
 
-// GetResponseAndNotify get response from FPGA and send it to channel
-func (m *Mediumpk) GetResponseAndNotify() (err error) {
+// getResponseAndNotify get response from FPGA and send it to channel
+func (m *Mediumpk) getResponseAndNotify() (err error) {
 	buffer, err := m.dev.Poll()
 	if err != nil {
 		return
@@ -111,8 +111,8 @@ func (m *Mediumpk) getChannel(i int) (*chan ResponseEnvelop, error) {
 	return resChan, nil
 }
 
-// StartMetric starts unix socket server to export metrics
-func (m *Mediumpk) StartMetric() {
+// startMetric starts unix socket server to export metrics
+func (m *Mediumpk) startMetric() {
 	if m.metricOn == true {
 		log.Println("Metric is already started")
 		return
@@ -149,7 +149,7 @@ func (m *Mediumpk) StartMetric() {
 }
 
 // StopMetric stops unix socket server
-func (m *Mediumpk) StopMetric() (err error) {
+func (m *Mediumpk) stopMetric() (err error) {
 	if m.metricOn == false {
 		return nil
 	}
@@ -172,6 +172,8 @@ func (m *Mediumpk) StopMetric() (err error) {
 	} else {
 		log.Println("[metric server] goroutine is properly stopped")
 	}
+
+	m.metricOn = false
 
 	return nil
 }
@@ -196,6 +198,6 @@ func (m *Mediumpk) echoServer(c net.Conn) {
 }
 
 // GetVersion return mbpu version imformation
-func (m *Mediumpk) GetVersion() (string, error) {
+func (m *Mediumpk) getVersion() (string, error) {
 	return m.dev.Version()
 }
