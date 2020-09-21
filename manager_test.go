@@ -17,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/the-medium/mediumpk/internal"
 )
 
@@ -129,7 +128,7 @@ func setUp(fileName string, dataCount int) error {
 		R := hex.EncodeToString(r.Bytes())
 		S := hex.EncodeToString(s.Bytes())
 		if err != nil {
-			fmt.Printf("%s\n", errors.WithMessage(err, "Sign failed"))
+			fmt.Printf(err.Error())
 		}
 
 		line := fmt.Sprintf("%s %s %s %s %s %s\n", D, Qx, Qy, R, S, H)
