@@ -111,6 +111,19 @@ func (m *Mediumpk) getChannel(i int) (*chan ResponseEnvelop, error) {
 	return resChan, nil
 }
 
+func (m *Mediumpk) clearChanStore() {
+	resEnv := ResponseEnvelop{
+		result: -1,
+		r:      []byte(nil),
+		s:      []byte(nil),
+	}
+	for i := 0; i < len(m.chanStore); i++ {
+		if m.chanStore[i] != nil {
+			*m.chanStore[i] <- resEnv
+		}
+	}
+}
+
 // startMetric starts unix socket server to export metrics
 func (m *Mediumpk) startMetric() {
 	if m.metricOn == true {
