@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math/big"
 	mrand "math/rand"
 	"os"
 	"runtime"
@@ -246,8 +247,31 @@ func sign() {
 	}
 
 	result, _, _ := Request(reqEnv)
-	if !result {
-		fmt.Printf("sign result : %t\n", result)
+	if result != 0 {
+		if result == -1 {
+			x := new(big.Int)
+			x.SetBytes(workload.qx)
+			y := new(big.Int)
+			y.SetBytes(workload.qy)
+			pub := ecdsa.PublicKey{
+				Curve: elliptic.P256(),
+				X:     x,
+				Y:     y,
+			}
+			d := new(big.Int)
+			d.SetBytes(d32)
+			priv := &ecdsa.PrivateKey{
+				PublicKey: pub,
+				D:         d,
+			}
+			_, _, err := ecdsa.Sign(rand.Reader, priv, h32)
+			if err != nil {
+				fmt.Printf("sign generation result : %t\n", false)
+			}
+
+		} else {
+			fmt.Printf("sign generation result : %d\n", result)
+		}
 	}
 }
 
@@ -281,7 +305,28 @@ func verify() {
 	}
 
 	result, _, _ := Request(reqEnv)
-	if !result {
-		fmt.Printf("verification result : %t\n", result)
+	if result != 0 {
+		if result == -1 {
+			x := new(big.Int)
+			x.SetBytes(qx32)
+			y := new(big.Int)
+			y.SetBytes(qy32)
+			r := new(big.Int)
+			r.SetBytes(r32)
+			s := new(big.Int)
+			s.SetBytes(s32)
+			pub := &ecdsa.PublicKey{
+				Curve: elliptic.P256(),
+				X:     x,
+				Y:     y,
+			}
+			res := ecdsa.Verify(pub, h32, r, s)
+			if !res {
+				fmt.Printf("verification result : %d\n", result)
+			}
+		} else {
+			fmt.Printf("verification result : %d\n", result)
+		}
 	}
+
 }

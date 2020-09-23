@@ -58,7 +58,7 @@ func InitMBPUManager(index int, maxPending int, metricSocketPath string) (err er
 		make(chan bool),
 		make(chan requestWrapper),
 		make(chan bool, maxPending),
-		make(chan bool, 1),
+		make(chan bool, 2),
 	}
 	fm.mpk.startMetric()
 	go fm.runPushing()
@@ -74,7 +74,6 @@ func CloseMBPUManager() error {
 	defer lock.Unlock()
 
 	close(fm.chanRequest)
-	close(fm.chanPoll)
 	loggerInfo.Println("Close MBPUManager Request channel")
 
 	err := fm.mpk.stopMetric()
@@ -93,7 +92,7 @@ func CloseMBPUManager() error {
 }
 
 // Request send RequestEnvelop to push-goroutine with channel for receive response
-func Request(env RequestEnvelop) (bool, []byte, []byte) {
+func Request(env RequestEnvelop) (int, []byte, []byte) {
 	respChan := make(chan ResponseEnvelop, 1)
 	req := requestWrapper{
 		env,
@@ -103,51 +102,56 @@ func Request(env RequestEnvelop) (bool, []byte, []byte) {
 	fm.chanRequest <- req
 	respEnv := <-respChan
 	close(respChan)
-
 	r, s := respEnv.Signature()
-	result := false
-	if respEnv.Result() == 0 {
-		result = true
-	}
-	return result, r, s
+
+	return respEnv.Result(), r, s
 }
 
 func (fm *mbpuManager) runPushing() {
 	stop := false
-
+	emergency := false
 	for !stop {
-		req, ok := <-fm.chanRequest
-		if !ok {
-			// break pushing
+		select {
+		case <-fm.chanEmergency:
+			emergency = true
 			stop = true
 			continue
-		}
-
-		if atomic.LoadInt32(&fm.available) == 0 {
-			fm.chanIsAvailable <- true
-			<-fm.chanAvailable
-		}
-
-		fm.chanPoll <- true
-		for {
-			idx, err := fm.mpk.request(&req.respChan, req.env)
-			if err == nil { // good to go
-				atomic.AddInt32(&fm.available, -1)
-				break
-			}
-
-			// check error type
-			if idx == -1 { // maxPending refuse error... try again
-				loggerError.Println(err.Error() + ", try again..")
-				continue
-			} else { // something has gone wrong
+		case req, ok := <-fm.chanRequest:
+			if !ok { // terminate this loop by CloseMBPUManager
 				stop = true
-				loggerError.Println(err)
+				continue
+			}
+
+			if atomic.LoadInt32(&fm.available) == 0 {
+				fm.chanIsAvailable <- true
+				<-fm.chanAvailable
+			}
+
+			fm.chanPoll <- true
+			for {
+				idx, err := fm.mpk.request(&req.respChan, req.env)
+				if err == nil { // good to go
+					atomic.AddInt32(&fm.available, -1)
+					break
+				}
+
+				// check error type
+				if idx == -1 { // maxPending refuse error... try again
+					loggerError.Println(err.Error() + ", try again..")
+					continue
+				} else { // something has gone wrong
+					fm.chanEmergency <- true
+					loggerError.Println(err)
+					break
+				}
 			}
 		}
-
 	}
-	fm.chanEmergency <- false
+
+	close(fm.chanPoll)
+	if emergency {
+		go fm.emergency()
+	}
 }
 
 func (fm *mbpuManager) runPolling() {
@@ -155,16 +159,17 @@ func (fm *mbpuManager) runPolling() {
 
 	for !stop {
 		_, ok := <-fm.chanPoll
-		if !ok {
-			// break polling
+		if !ok { // terminate this loop by CloseMBPUManager
 			stop = true
 			continue
 		}
 
 		err := fm.mpk.getResponseAndNotify()
 		if err != nil {
+			fm.chanEmergency <- true
 			stop = true
 			loggerError.Println(err)
+			continue
 		}
 
 		select {
@@ -174,5 +179,24 @@ func (fm *mbpuManager) runPolling() {
 		default:
 			atomic.AddInt32(&fm.available, 1)
 		}
+	}
+}
+
+func (fm *mbpuManager) emergency() {
+	fm.mpk.clearChanStore()
+	stop := false
+
+	for !stop {
+		req, ok := <-fm.chanRequest
+		if !ok { // terminate this loop by CloseMBPUManager
+			stop = true
+			continue
+		}
+		resEnv := ResponseEnvelop{
+			result: -1,
+			r:      []byte(nil),
+			s:      []byte(nil),
+		}
+		req.respChan <- resEnv
 	}
 }
