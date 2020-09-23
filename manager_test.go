@@ -27,7 +27,7 @@ var (
 	dataCount        int        = 10000
 	testDataFileName string     = "dat"
 
-	mbpuIndex        int    = 0
+	mbpuCount        int    = 2
 	maxPending       int    = 64
 	metricSocketPath string = "/tmp"
 )
@@ -158,7 +158,7 @@ func setUp(fileName string, dataCount int) error {
 
 	maxProcs := runtime.GOMAXPROCS(0)
 	fmt.Println("GOMAXPROCS : ", strconv.Itoa(maxProcs))
-	err = InitMBPUManager(mbpuIndex, maxPending, metricSocketPath)
+	err = InitMBPUManager(mbpuCount, maxPending, metricSocketPath)
 
 	return err
 }

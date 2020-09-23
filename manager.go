@@ -8,6 +8,7 @@ package mediumpk
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -27,17 +28,11 @@ type requestWrapper struct {
 }
 
 type mbpuManager struct {
-	mpk             *Mediumpk
-	available       int32
-	chanAvailable   chan bool
-	chanIsAvailable chan bool
-	chanRequest     chan requestWrapper
-	chanPoll        chan bool
-	chanEmergency   chan bool
+	chanRequest chan requestWrapper
 }
 
 // InitMBPUManager opens MBPU device and runs goroutine each for request/response to/from MBPU
-func InitMBPUManager(index int, maxPending int, metricSocketPath string) (err error) {
+func InitMBPUManager(mbpuCount int, maxPending int, metricSocketPath string) (err error) {
 	if fm != nil {
 		loggerError.Println("MBPUManager is already initialized ...")
 		return
@@ -46,25 +41,24 @@ func InitMBPUManager(index int, maxPending int, metricSocketPath string) (err er
 	lock.Lock()
 	defer lock.Unlock()
 
-	mpk, err := newMediumpk(index, maxPending, metricSocketPath)
-	if err != nil {
-		return
-	}
-	var available int32 = int32(maxPending)
 	fm = &mbpuManager{
-		mpk,
-		available,
-		make(chan bool, 1),
-		make(chan bool),
 		make(chan requestWrapper),
-		make(chan bool, maxPending),
-		make(chan bool, 2),
 	}
-	fm.mpk.startMetric()
-	go fm.runPushing()
-	go fm.runPolling()
 
-	loggerInfo.Println("MBPUManager Initialized... MAX_PENDING : ", maxPending)
+	for i := 0; i < mbpuCount; i++ {
+		mpk, err := newMediumpk(i, maxPending, metricSocketPath)
+		if err != nil {
+			return err
+		}
+		var available int32 = int32(maxPending)
+		chPoll := make(chan bool, maxPending)
+		chPendable := make(chan bool)
+		chEmergency := runPushing(mpk, chPoll, chPendable, &available)
+		runPolling(mpk, chPoll, chPendable, chEmergency, &available)
+	}
+
+	fmt.Println("MBPUManager Initialized...")
+	fmt.Printf("MBPUCount: %d  MAXPENDING : %d \n", mbpuCount, maxPending)
 	return
 }
 
@@ -74,20 +68,10 @@ func CloseMBPUManager() error {
 	defer lock.Unlock()
 
 	close(fm.chanRequest)
-	loggerInfo.Println("Close MBPUManager Request channel")
-
-	err := fm.mpk.stopMetric()
-	if err != nil {
-		return err
-	}
-
-	err = fm.mpk.close()
-	if err != nil {
-		return err
-	}
+	loggerInfo.Println("MBPUManager request channel closed")
 
 	fm = nil
-	loggerInfo.Println("Close MBPUManager")
+	loggerInfo.Println("MBPUManager Closed")
 	return nil
 }
 
@@ -100,103 +84,115 @@ func Request(env RequestEnvelop) (int, []byte, []byte) {
 	}
 
 	fm.chanRequest <- req
-	respEnv := <-respChan
+	respEnv, ok := <-respChan
+	if !ok {
+		return -1, []byte(nil), []byte(nil)
+	}
+
 	close(respChan)
 	r, s := respEnv.Signature()
-
 	return respEnv.Result(), r, s
 }
 
-func (fm *mbpuManager) runPushing() {
+func runPushing(mpk *Mediumpk, chPoll chan bool, chPendable chan bool, available *int32) chan bool {
 	stop := false
-	emergency := false
-	for !stop {
-		select {
-		case <-fm.chanEmergency:
-			emergency = true
-			stop = true
-			continue
-		case req, ok := <-fm.chanRequest:
+
+	chEmergency := make(chan bool)
+	mpk.startMetric()
+	go func() {
+		for !stop {
+			select {
+			case <-chEmergency:
+				// mbpu is down
+				mpk.clearChanStore()
+				go runEmergency()
+				stop = true
+				continue
+			case req, ok := <-fm.chanRequest:
+				if !ok {
+					// terminate this loop by CloseMBPUManager
+					stop = true
+					continue
+				}
+				if atomic.LoadInt32(available) == 0 {
+					chPendable <- true
+					<-chPendable
+				}
+				chPoll <- true
+
+				for {
+					idx, err := mpk.request(&req.respChan, req.env)
+					if err == nil { // good to go
+						atomic.AddInt32(available, -1)
+						break
+					}
+					// check error type
+					if idx == -1 { // maxPending refuse error... try again
+						loggerError.Println(err.Error() + ", try again..")
+						continue
+					} else { // something has gone wrong
+						chEmergency <- true
+						fmt.Println(err)
+						break
+					}
+				}
+			}
+		}
+		close(chPoll)
+		close(chEmergency)
+		err := mpk.stopMetric()
+		if err != nil {
+			loggerError.Println(err.Error())
+		}
+
+		err = mpk.close()
+		if err != nil {
+			loggerError.Println(err.Error())
+		}
+	}()
+	return chEmergency
+}
+
+func runPolling(mpk *Mediumpk, chPoll <-chan bool, chPendable chan bool, chEmergency chan bool, available *int32) {
+	go func() {
+		stop := false
+
+		for !stop {
+			_, ok := <-chPoll
 			if !ok { // terminate this loop by CloseMBPUManager
 				stop = true
 				continue
 			}
-
-			if atomic.LoadInt32(&fm.available) == 0 {
-				fm.chanIsAvailable <- true
-				<-fm.chanAvailable
+			err := mpk.getResponseAndNotify()
+			if err != nil {
+				chEmergency <- true
+				stop = true
+				loggerError.Println(err)
+				fmt.Println(err.Error())
+				continue
 			}
 
-			fm.chanPoll <- true
-			for {
-				idx, err := fm.mpk.request(&req.respChan, req.env)
-				if err == nil { // good to go
-					atomic.AddInt32(&fm.available, -1)
-					break
-				}
-
-				// check error type
-				if idx == -1 { // maxPending refuse error... try again
-					loggerError.Println(err.Error() + ", try again..")
-					continue
-				} else { // something has gone wrong
-					fm.chanEmergency <- true
-					loggerError.Println(err)
-					break
-				}
+			select {
+			case <-chPendable:
+				atomic.AddInt32(available, 1)
+				chPendable <- true
+			default:
+				atomic.AddInt32(available, 1)
 			}
 		}
-	}
-
-	close(fm.chanPoll)
-	if emergency {
-		go fm.emergency()
-	}
+		close(chPendable)
+	}()
 }
 
-func (fm *mbpuManager) runPolling() {
+func runEmergency() {
 	stop := false
-
-	for !stop {
-		_, ok := <-fm.chanPoll
-		if !ok { // terminate this loop by CloseMBPUManager
-			stop = true
-			continue
-		}
-
-		err := fm.mpk.getResponseAndNotify()
-		if err != nil {
-			fm.chanEmergency <- true
-			stop = true
-			loggerError.Println(err)
-			continue
-		}
-
-		select {
-		case <-fm.chanIsAvailable:
-			atomic.AddInt32(&fm.available, 1)
-			fm.chanAvailable <- true
-		default:
-			atomic.AddInt32(&fm.available, 1)
-		}
-	}
-}
-
-func (fm *mbpuManager) emergency() {
-	fm.mpk.clearChanStore()
-	stop := false
-
+	fmt.Println("emergency...!!")
 	for !stop {
 		req, ok := <-fm.chanRequest
 		if !ok { // terminate this loop by CloseMBPUManager
 			stop = true
 			continue
 		}
-		resEnv := ResponseEnvelop{
-			result: -1,
-			r:      []byte(nil),
-			s:      []byte(nil),
-		}
-		req.respChan <- resEnv
+		close(req.respChan)
 	}
 }
