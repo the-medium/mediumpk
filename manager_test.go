@@ -27,7 +27,7 @@ var (
 	dataCount        int        = 10000
 	testDataFileName string     = "dat"
 
-	mbpuCount        int    = 2
+	mbpuCount        int    = 3
 	maxPending       int    = 64
 	metricSocketPath string = "/tmp"
 )

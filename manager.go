@@ -29,6 +29,7 @@ type requestWrapper struct {
 
 type mbpuManager struct {
 	chanRequest chan requestWrapper
+	wg          *sync.WaitGroup
 }
 
 // InitMBPUManager opens MBPU device and runs goroutine each for request/response to/from MBPU
@@ -41,8 +42,10 @@ func InitMBPUManager(mbpuCount int, maxPending int, metricSocketPath string) (er
 	lock.Lock()
 	defer lock.Unlock()
 
+	var wg sync.WaitGroup
 	fm = &mbpuManager{
 		make(chan requestWrapper),
+		&wg,
 	}
 
 	for i := 0; i < mbpuCount; i++ {
@@ -53,6 +56,8 @@ func InitMBPUManager(mbpuCount int, maxPending int, metricSocketPath string) (er
 		var available int32 = int32(maxPending)
 		chPoll := make(chan bool, maxPending)
 		chPendable := make(chan bool)
+
+		wg.Add(1)
 		chEmergency := runPushing(mpk, chPoll, chPendable, &available)
 		runPolling(mpk, chPoll, chPendable, chEmergency, &available)
 	}
@@ -70,6 +75,7 @@ func CloseMBPUManager() error {
 	close(fm.chanRequest)
 	loggerInfo.Println("MBPUManager request channel closed")
 
+	fm.wg.Wait()
 	fm = nil
 	loggerInfo.Println("MBPUManager Closed")
 	return nil
@@ -100,6 +106,7 @@ func runPushing(mpk *Mediumpk, chPoll chan bool, chPendable chan bool, available
 	chEmergency := make(chan bool)
 	mpk.startMetric()
 	go func() {
+		fmt.Println("run pushing")
 		for !stop {
 			select {
 			case <-chEmergency:
@@ -111,6 +118,7 @@ func runPushing(mpk *Mediumpk, chPoll chan bool, chPendable chan bool, available
 			case req, ok := <-fm.chanRequest:
 				if !ok {
 					// terminate this loop by CloseMBPUManager
+					fmt.Println("push over")
 					stop = true
 					continue
 				}
@@ -149,12 +157,15 @@ func runPushing(mpk *Mediumpk, chPoll chan bool, chPendable chan bool, available
 		if err != nil {
 			loggerError.Println(err.Error())
 		}
+
+		fm.wg.Done()
 	}()
 	return chEmergency
 }
 
 func runPolling(mpk *Mediumpk, chPoll <-chan bool, chPendable chan bool, chEmergency chan bool, available *int32) {
 	go func() {
+		fmt.Println("run polling")
 		stop := false
 
 		for !stop {
@@ -165,6 +176,7 @@ func runPolling(mpk *Mediumpk, chPoll <-chan bool, chPendable chan bool, chEmerg
 			}
 			err := mpk.getResponseAndNotify()
 			if err != nil {
+				fmt.Printf("emergency from polling %d\n ", *available)
 				chEmergency <- true
 				stop = true
 				loggerError.Println(err)
