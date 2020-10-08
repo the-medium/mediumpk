@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package mediumpk
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"sync"
@@ -15,11 +14,10 @@ import (
 )
 
 var (
-	buf         bytes.Buffer
-	fm          *mbpuManager = nil
-	lock                     = &sync.Mutex{}
-	loggerInfo               = log.New(&buf, "[MBPU][INFO] : ", log.Lshortfile|log.Ldate|log.Ltime|log.LUTC)
-	loggerError              = log.New(&buf, "[MBPU][ERRO] : ", log.Lshortfile)
+	fm   *mbpuManager = nil
+	lock              = &sync.Mutex{}
+	// loggerInfo               = log.New(&buf, "[MBPU][INFO] : ", log.Lshortfile|log.Ldate|log.Ltime|log.LUTC)
+	// loggerError              = log.New(&buf, "[MBPU][ERRO] : ", log.Lshortfile)
 )
 
 type requestWrapper struct {
@@ -35,7 +33,7 @@ type mbpuManager struct {
 // InitMBPUManager opens MBPU device and runs goroutine each for request/response to/from MBPU
 func InitMBPUManager(mbpuCount int, maxPending int, metricSocketPath string) (err error) {
 	if fm != nil {
-		loggerError.Println("MBPUManager is already initialized ...")
+		log.Println("MBPUManager is already initialized ...")
 		return
 	}
 
@@ -62,8 +60,9 @@ func InitMBPUManager(mbpuCount int, maxPending int, metricSocketPath string) (er
 		runPolling(mpk, chPoll, chPendable, chEmergency, &available)
 	}
 
-	fmt.Println("MBPUManager Initialized...")
-	fmt.Printf("MBPUCount: %d  MAXPENDING : %d \n", mbpuCount, maxPending)
+	log.Println("MBPUManager Initialized...")
+	log.Printf("MBPUCount: %d  MAXPENDING : %d \n", mbpuCount, maxPending)
+
 	return
 }
 
@@ -73,11 +72,11 @@ func CloseMBPUManager() error {
 	defer lock.Unlock()
 
 	close(fm.chanRequest)
-	loggerInfo.Println("MBPUManager request channel closed")
+	log.Println("MBPUManager request channel closed")
 
 	fm.wg.Wait()
 	fm = nil
-	loggerInfo.Println("MBPUManager Closed")
+	log.Println("MBPUManager Closed")
 	return nil
 }
 
@@ -106,7 +105,6 @@ func runPushing(mpk *Mediumpk, chPoll chan bool, chPendable chan bool, available
 	chEmergency := make(chan bool)
 	mpk.startMetric()
 	go func() {
-		fmt.Println("run pushing")
 		for !stop {
 			select {
 			case <-chEmergency:
@@ -118,7 +116,6 @@ func runPushing(mpk *Mediumpk, chPoll chan bool, chPendable chan bool, available
 			case req, ok := <-fm.chanRequest:
 				if !ok {
 					// terminate this loop by CloseMBPUManager
-					fmt.Println("push over")
 					stop = true
 					continue
 				}
@@ -136,7 +133,7 @@ func runPushing(mpk *Mediumpk, chPoll chan bool, chPendable chan bool, available
 					}
 					// check error type
 					if idx == -1 { // maxPending refuse error... try again
-						loggerError.Println(err.Error() + ", try again..")
+						log.Println(err.Error() + ", try again..")
 						continue
 					} else { // something has gone wrong
 						chEmergency <- true
@@ -150,12 +147,12 @@ func runPushing(mpk *Mediumpk, chPoll chan bool, chPendable chan bool, available
 		close(chEmergency)
 		err := mpk.stopMetric()
 		if err != nil {
-			loggerError.Println(err.Error())
+			log.Println(err.Error())
 		}
 
 		err = mpk.close()
 		if err != nil {
-			loggerError.Println(err.Error())
+			log.Println(err.Error())
 		}
 
 		fm.wg.Done()
@@ -165,7 +162,6 @@ func runPushing(mpk *Mediumpk, chPoll chan bool, chPendable chan bool, available
 
 func runPolling(mpk *Mediumpk, chPoll <-chan bool, chPendable chan bool, chEmergency chan bool, available *int32) {
 	go func() {
-		fmt.Println("run polling")
 		stop := false
 
 		for !stop {
@@ -176,11 +172,10 @@ func runPolling(mpk *Mediumpk, chPoll <-chan bool, chPendable chan bool, chEmerg
 			}
 			err := mpk.getResponseAndNotify()
 			if err != nil {
-				fmt.Printf("emergency from polling %d\n ", *available)
+				log.Printf("emergency from polling %d\n ", *available)
 				chEmergency <- true
 				stop = true
-				loggerError.Println(err)
-				fmt.Println(err.Error())
+				log.Println(err.Error())
 				continue
 			}
 
@@ -198,7 +193,7 @@ func runPolling(mpk *Mediumpk, chPoll <-chan bool, chPendable chan bool, chEmerg
 
 func runEmergency() {
 	stop := false
-	fmt.Println("emergency...!!")
+	log.Println("emergency...!!")
 	for !stop {
 		req, ok := <-fm.chanRequest
 		if !ok { // terminate this loop by CloseMBPUManager
