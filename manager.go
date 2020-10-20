@@ -33,8 +33,11 @@ type mbpuManager struct {
 // InitMBPUManager opens MBPU device and runs goroutine each for request/response to/from MBPU
 func InitMBPUManager(mbpuCount int, maxPending int, metricSocketPath string) (err error) {
 	if fm != nil {
-		log.Println("MBPUManager is already initialized ...")
-		return
+		return fmt.Errorf("mbpu manager is already initialized")
+	}
+
+	if mbpuCount < 1 {
+		return fmt.Errorf("mbpuCount must larger than or equal to 1")
 	}
 
 	lock.Lock()
@@ -63,7 +66,7 @@ func InitMBPUManager(mbpuCount int, maxPending int, metricSocketPath string) (er
 	log.Println("MBPUManager Initialized...")
 	log.Printf("MBPUCount: %d  MAXPENDING : %d \n", mbpuCount, maxPending)
 
-	return
+	return err
 }
 
 // CloseMBPUManager closes MBPU Device and stops goroutines for request/response to/from MBPU
