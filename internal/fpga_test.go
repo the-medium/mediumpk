@@ -136,9 +136,6 @@ func TestFPGADevice_Reset(t *testing.T) {
 	err = dev.Reset()
 	assert.NoError(t, err)
 
-	// Polling Empty C2H FIFO => Input/Output Error
-	_, err = dev.Poll()
-	assert.Error(t, err)
 
 	err = dev.Close()
 	assert.NoError(t, err)

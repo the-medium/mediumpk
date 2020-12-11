@@ -21,6 +21,7 @@ type Mediumpk struct {
 	chanEnd    chan bool
 	socketAddr string
 	count      int32
+	emergency  int
 	metricOn   bool
 }
 
@@ -41,7 +42,7 @@ func newMediumpk(index int, maxPending int, socketPath string) (*Mediumpk, error
 		return nil, err
 	}
 
-	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), socketAddr, 0, false}, nil
+	return &Mediumpk{index, dev, make([]*chan ResponseEnvelop, maxPending), make(chan bool, 1), socketAddr, 0, 0, false}, nil
 }
 
 // Close releases Mediumpk instance
@@ -204,7 +205,7 @@ func (m *Mediumpk) echoServer(c net.Conn) {
 	}
 
 	vccint, vccaux, vccbram := resEnv.Voltages()
-	msg := fmt.Sprintf(`{"m_temperature":%s, "m_vccint":%s, "m_vccaux":%s, "m_vccbram":%s, "m_count":%d}}`, resEnv.Temperature(), vccint, vccaux, vccbram, m.count)
+	msg := fmt.Sprintf(`{ "m_temperature":%s, "m_vccint":%s, "m_vccaux":%s, "m_vccbram":%s, "m_count":%d, "m_emergency":%d }`, resEnv.Temperature(), vccint, vccaux, vccbram, m.count, m.emergency)
 	msgBytes := []byte(msg)
 	c.Write(msgBytes)
 	c.Close()

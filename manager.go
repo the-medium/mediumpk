@@ -18,6 +18,11 @@ var (
 	lock              = &sync.Mutex{}
 	// loggerInfo               = log.New(&buf, "[MBPU][INFO] : ", log.Lshortfile|log.Ldate|log.Ltime|log.LUTC)
 	// loggerError              = log.New(&buf, "[MBPU][ERRO] : ", log.Lshortfile)
+	emergencyMsg string = `======================================
+	====[EMERGENCY] MBPU DOWN DETECTED====
+	=======SWITCH TO CPU OPERATION========
+	======================================
+	`
 )
 
 type requestWrapper struct {
@@ -112,6 +117,7 @@ func runPushing(mpk *Mediumpk, chPoll chan bool, chPendable chan bool, available
 			select {
 			case <-chEmergency:
 				// mbpu is down
+				mpk.emergency = 1
 				mpk.clearChanStore()
 				go runEmergency()
 				stop = true
@@ -196,7 +202,7 @@ func runPolling(mpk *Mediumpk, chPoll <-chan bool, chPendable chan bool, chEmerg
 
 func runEmergency() {
 	stop := false
-	log.Println("emergency...!!")
+	fmt.Println(emergencyMsg)
 	for !stop {
 		req, ok := <-fm.chanRequest
 		if !ok { // terminate this loop by CloseMBPUManager
