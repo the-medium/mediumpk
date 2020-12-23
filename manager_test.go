@@ -17,8 +17,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/the-medium/mediumpk/internal"
 )
 
 var (
@@ -228,7 +226,7 @@ func sign() {
 	workload := data[mrand.Int()%len(data)]
 	d := workload.d
 	h := workload.h
-	k, err := internal.CreateRandomK(d, h)
+	k, err := CreateRandomK(d, h)
 	if err != nil {
 		fmt.Println("Failed to create random k")
 	}
