@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 
@@ -110,6 +111,8 @@ func SignCPU(priv *ecdsa.PrivateKey, k *big.Int, c elliptic.Curve, hash []byte) 
 			r.Mod(r, N)
 			if r.Sign() != 0 {
 				break
+			} else {
+				return nil, nil, fmt.Errorf("r is zero")
 			}
 		}
 
