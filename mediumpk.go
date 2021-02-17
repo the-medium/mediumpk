@@ -205,7 +205,8 @@ func (m *Mediumpk) echoServer(c net.Conn) {
 	}
 
 	vccint, vccaux, vccbram := resEnv.Voltages()
-	msg := fmt.Sprintf(`{ "m_temperature":%s, "m_vccint":%s, "m_vccaux":%s, "m_vccbram":%s, "m_count":%d, "m_emergency":%d }`, resEnv.Temperature(), vccint, vccaux, vccbram, m.count, m.emergency)
+	signCount, verifyCount, errorCount := resEnv.Counter()
+	msg := fmt.Sprintf(`{ "m_temperature":%s, "m_vccint":%s, "m_vccaux":%s, "m_vccbram":%s, "m_signCount":%d,"m_verifyCount":%d,"m_errorCount":%d, "m_emergency":%d }`, resEnv.Temperature(), vccint, vccaux, vccbram, signCount, verifyCount, errorCount, m.emergency)
 	msgBytes := []byte(msg)
 	c.Write(msgBytes)
 	c.Close()

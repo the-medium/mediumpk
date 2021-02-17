@@ -77,13 +77,9 @@ func (s *deserializer) deserializeMetric(env *MetricEnvelop, buffer []byte) erro
 	vccbram := fmt.Sprintf("%f", vccBramFloat32)
 	env.vccbram = vccbram
 
-	totalCount := int(binary.LittleEndian.Uint32(buffer[16:20]))
-	successCount := int(binary.LittleEndian.Uint32(buffer[20:24]))
-	errorCount := int(binary.LittleEndian.Uint32(buffer[24:28]))
-	env.count = totalCount - successCount - errorCount
-	if env.count < 0 {
-		env.count += 4294967295 // uint_max
-	}
+	env.signCount = int(binary.LittleEndian.Uint32(buffer[16:20]))
+	env.verifyCount = int(binary.LittleEndian.Uint32(buffer[20:24]))
+	env.errorCount = int(binary.LittleEndian.Uint32(buffer[24:28]))
 
 	return nil
 }

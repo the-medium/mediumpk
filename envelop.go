@@ -60,7 +60,9 @@ type MetricEnvelop struct {
 	vccint      string
 	vccaux      string
 	vccbram     string
-	count       int
+	signCount   int
+	verifyCount int
+	errorCount  int
 }
 
 // Deserialize fill MetricEnvelop with data from buffer
@@ -79,6 +81,6 @@ func (m MetricEnvelop) Voltages() (string, string, string) {
 }
 
 // Count returns the number of pending requests in fpga
-func (m MetricEnvelop) Count() int {
-	return m.count
+func (m MetricEnvelop) Counter() (int, int, int) {
+	return m.signCount, m.verifyCount, m.errorCount
 }

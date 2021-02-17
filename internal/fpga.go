@@ -155,7 +155,7 @@ func (d *FPGADevice) GetMetrics() ([]byte, error) {
 	buffer := make([]byte, MetricSetSize)
 
 	idx := 0
-	detail := []string{"Temperature", "VCCINT", "VCCAUX", "VCCBRAM", "Total", "Success", "Error"}
+	detail := []string{"Temperature", "VCCINT", "VCCAUX", "VCCBRAM", "SignCount", "VerifyCount", "Error"}
 	pos := []int64{0x2400, 0x2404, 0x2408, 0x2418, 0x18010, 0x18014, 0x18018}
 	for i, v := range pos {
 		readSize, err := d.user.ReadAt(buffer[idx:idx+4], v)

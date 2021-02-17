@@ -142,5 +142,7 @@ func TestDeserializeMetric(t *testing.T) {
 	assert.Equal(t, "0.818573", env.vccint)
 	assert.Equal(t, "1.810272", env.vccaux)
 	assert.Equal(t, "0.818939", env.vccbram)
-	assert.Equal(t, 0, env.count)
+	assert.Equal(t, 0, env.signCount)
+	assert.Equal(t, 0, env.verifyCount)
+	assert.Equal(t, 0, env.errorCount)
 }
